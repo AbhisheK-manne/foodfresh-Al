@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validation Blueprint for Food Freshness Scans
+    function isValidScan(data) {
+      return data.id is string && isValidId(data.id)
+        && data.userId is string && data.userId == request.auth.uid
+        && data.food_name is string && data.food_name.size() > 0 && data.food_name.size() <= 150
+        && data.food_category is string && data.food_category.size() <= 50
+        && data.freshness_score is number && data.freshness_score >= 0 && data.freshness_score <= 100
+        && data.status is string && data.status.size() <= 50
+        && data.spoilage_risk is string && data.spoilage_risk.size() <= 30;
+    }
+
+    // Validation Blueprint for Dataset Items
+    function isValidDatasetItem(data) {
+      return data.id is string && isValidId(data.id)
+        && data.authorId is string && data.authorId == request.auth.uid
+        && data.food_name is string && data.food_name.size() > 0 && data.food_name.size() <= 150
+        && data.food_category is string && data.food_category.size() <= 50
+        && data.freshness_label is string && data.freshness_label.size() <= 50
+        && data.split is string && data.split.size() <= 20;
+    }
+
+    // Validation Blueprint for User Profiles
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.email is string && data.email.size() <= 256;
+    }
+
+    // Connection Health-Check Probe (Read-only probe doc)
+    match /test/{docId} {
+      allow get: if true;
+    }
+
+    // User Profile Documents & Scans Subcollection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Strict PII isolation: users collection cannot be listed
+      allow create: if isOwner(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming());
+      allow delete: if isOwner(userId);
+
+      // User Scans (Per-User Subcollection)
+      match /scans/{scanId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(scanId) && isValidScan(incoming());
+        allow update: if isOwner(userId) && isValidId(scanId) && isValidScan(incoming());
+        allow delete: if isOwner(userId) && isValidId(scanId);
+      }
+    }
+
+    // Community / Ground-Truth Benchmark Dataset Collection
+    match /dataset/{itemId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(itemId) && isValidDatasetItem(incoming());
+      allow update: if isSignedIn() && isValidId(itemId) && isValidDatasetItem(incoming()) && existing().authorId == request.auth.uid;
+      allow delete: if isSignedIn() && isValidId(itemId) && existing().authorId == request.auth.uid;
+    }
+  }
+}

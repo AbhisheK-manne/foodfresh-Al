@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "foodScan": {
+      "title": "FoodScan",
+      "description": "Represents an individual food freshness inspection scan result",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Unique scan ID" },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Owner user UID" },
+        "food_name": { "type": "string", "maxLength": 150, "description": "Name of the inspected food" },
+        "food_category": { "type": "string", "maxLength": 50, "description": "Food category classification" },
+        "freshness_score": { "type": "number", "description": "Overall freshness index 0-100" },
+        "status": { "type": "string", "maxLength": 50, "description": "Freshness status category" },
+        "spoilage_risk": { "type": "string", "maxLength": 20, "description": "Spoilage risk level" },
+        "confidence": { "type": "number", "description": "Confidence percentage 0-100" },
+        "recommendation": { "type": "string", "maxLength": 500, "description": "Consumption or storage recommendation" },
+        "estimated_remaining_days": { "type": "string", "maxLength": 100, "description": "Remaining shelf life projection" },
+        "engine_used": { "type": "string", "maxLength": 50, "description": "Evaluation engine identifier" },
+        "timestamp": { "type": "string", "maxLength": 50, "description": "ISO timestamp string" }
+      },
+      "required": ["id", "userId", "food_name", "food_category", "freshness_score", "status", "spoilage_risk", "timestamp"]
+    },
+    "datasetItem": {
+      "title": "DatasetItem",
+      "description": "Represents a ground-truth dataset benchmark or contributed sample",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Unique dataset sample ID" },
+        "authorId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "User UID who contributed sample" },
+        "food_name": { "type": "string", "maxLength": 150, "description": "Name of the food sample" },
+        "food_category": { "type": "string", "maxLength": 50, "description": "Category of food" },
+        "freshness_label": { "type": "string", "maxLength": 50, "description": "Assigned freshness classification" },
+        "storage_temperature": { "type": "number", "description": "Temperature in Celsius" },
+        "storage_duration": { "type": "number", "description": "Storage duration in days" },
+        "storage_method": { "type": "string", "maxLength": 50, "description": "Storage method applied" },
+        "split": { "type": "string", "maxLength": 20, "description": "Machine learning split: train, test, or validation" },
+        "source": { "type": "string", "maxLength": 50, "description": "Source of sample" },
+        "created_at": { "type": "string", "maxLength": 50, "description": "Creation timestamp" }
+      },
+      "required": ["id", "authorId", "food_name", "food_category", "freshness_label", "split", "source", "created_at"]
+    },
+    "userProfile": {
+      "title": "UserProfile",
+      "description": "User configuration, profile data, and custom analysis preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "User UID" },
+        "email": { "type": "string", "maxLength": 256, "description": "User email address" },
+        "displayName": { "type": "string", "maxLength": 150, "description": "User display name" },
+        "temperatureUnit": { "type": "string", "maxLength": 5, "description": "Preferred temperature unit C or F" },
+        "updatedAt": { "type": "string", "maxLength": 50, "description": "Last update ISO timestamp" }
+      },
+      "required": ["userId", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "User account document containing profile and preferences"
+    },
+    "/users/{userId}/scans/{scanId}": {
+      "schema": "foodScan",
+      "description": "User-specific persistent food freshness scan records"
+    },
+    "/dataset/{itemId}": {
+      "schema": "datasetItem",
+      "description": "Community and lab verified food freshness dataset samples"
+    }
+  }
+}
